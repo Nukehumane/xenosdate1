@@ -1,9 +1,16 @@
-from flask import Flask, request
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    bot.reply_to(message, (
+        "👋 Привет! Я бот для расчёта дат в мире Xenos RP.\n\n"
+        "Доступные команды:\n"
+        "/xenos_now — текущая дата в Xenos RP\n"
+        "/revers ДД.ММ.ГГГГ — когда наступит Xenos-дата в реальности\n"
+        "/convert ДД.ММ.ГГГГ — какая Xenos-дата соответствует реальной\n"
+    ))from flask import Flask, request
 import telebot
 from datetime import datetime, timedelta
 import pytz
 import os
-
 TOKEN = os.getenv("TOKEN") or "8373973529:AAGAZpY1ApgypN0ZIL9Cphk7AMO9gkvCX0k"
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
 app = Flask(__name__)
