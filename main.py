@@ -82,3 +82,6 @@ def webhook():
     update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
     bot.process_new_updates([update])
     return "OK", 200
+@app.route("/", methods=["GET"])
+def index():
+    return "Xenos RP bot is alive!", 200
