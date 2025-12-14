@@ -1,3 +1,30 @@
+from flask import Flask, request
+import telebot
+from datetime import datetime, timedelta
+import pytz
+import os
+
+# Получаем токен из переменной окружения
+TOKEN = os.getenv("TOKEN") or "8373973529:AAGAZpY1ApgypN0ZIL9Cphk7AMO9gkvCX0k"
+bot = telebot.TeleBot(TOKEN, parse_mode=None)
+app = Flask(__name__)
+
+# Настройка временных точек
+xenos_start = datetime(1990, 12, 1, 0, 0)
+real_start = datetime(2025, 12, 1, 0, 0, tzinfo=pytz.timezone("Europe/Moscow"))
+
+# 1 реальный день = 90 Xenos-дней
+xenos_per_real_minute = 90 * 24 * 60 / (24 * 60)
+
+# Вычисление текущей Xenos-даты
+def get_xenos_now():
+    now_real = datetime.now(pytz.timezone("Europe/Moscow"))
+    delta_real = now_real - real_start
+    delta_minutes = delta_real.total_seconds() / 60
+    xenos_minutes = delta_minutes * xenos_per_real_minute
+    return xenos_start + timedelta(minutes=xenos_minutes)
+
+# Команда /start
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     bot.reply_to(message, (
@@ -6,33 +33,15 @@ def handle_start(message):
         "/xenos_now — текущая дата в Xenos RP\n"
         "/revers ДД.ММ.ГГГГ — когда наступит Xenos-дата в реальности\n"
         "/convert ДД.ММ.ГГГГ — какая Xenos-дата соответствует реальной\n"
-    ))from flask import Flask, request
-import telebot
-from datetime import datetime, timedelta
-import pytz
-import os
-TOKEN = os.getenv("TOKEN") or "8373973529:AAGAZpY1ApgypN0ZIL9Cphk7AMO9gkvCX0k"
-bot = telebot.TeleBot(TOKEN, parse_mode=None)
-app = Flask(__name__)
+    ))
 
-xenos_start = datetime(1990, 12, 1, 0, 0)
-real_start = datetime(2025, 12, 1, 0, 0, tzinfo=pytz.timezone("Europe/Moscow"))
-
-# 1 реальный день = 90 Xenos-дней
-xenos_per_real_minute = 90 * 24 * 60 / (24 * 60)
-
-def get_xenos_now():
-    now_real = datetime.now(pytz.timezone("Europe/Moscow"))
-    delta_real = now_real - real_start
-    delta_minutes = delta_real.total_seconds() / 60
-    xenos_minutes = delta_minutes * xenos_per_real_minute
-    return xenos_start + timedelta(minutes=xenos_minutes)
-
+# Команда /xenos_now
 @bot.message_handler(commands=['xenos_now'])
 def handle_now(message):
     xenos_time = get_xenos_now()
     bot.reply_to(message, f"📅 Сейчас в мире Xenos RP: {xenos_time.strftime('%d.%m.%Y %H:%M')}")
 
+# Команда /revers
 @bot.message_handler(commands=['revers'])
 def handle_revers(message):
     parts = message.text.split(maxsplit=1)
@@ -49,6 +58,7 @@ def handle_revers(message):
     except Exception:
         bot.reply_to(message, "❌ Неверный формат. Используй: /revers ДД.ММ.ГГГГ")
 
+# Команда /convert
 @bot.message_handler(commands=['convert'])
 def handle_convert(message):
     parts = message.text.split(maxsplit=1)
@@ -66,6 +76,7 @@ def handle_convert(message):
     except Exception:
         bot.reply_to(message, "❌ Неверный формат. Используй: /convert ДД.ММ.ГГГГ")
 
+# Обработка входящих запросов от Telegram
 @app.route("/", methods=["POST"])
 def webhook():
     update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
