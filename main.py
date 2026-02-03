@@ -2,10 +2,12 @@ import telebot
 from datetime import datetime, timedelta
 import pytz
 import os
+from dotenv import load_dotenv # Нужно будет установить библиотеку (pip install python-dotenv)
 
-# 🔐 Твой токен (оставлен без изменений)
-TOKEN = "8373973529:AAGAZpY1ApgypN0ZIL9Cphk7AMO9gkvCX0k"
+load_dotenv()
+TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
+
 
 # 📅 Настройка временных точек
 tz = pytz.timezone("Europe/Moscow")
