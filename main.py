@@ -10,14 +10,15 @@ TOKEN = os.getenv("TOKEN") or "8373973529:AAGAZpY1ApgypN0ZIL9Cphk7AMO9gkvCX0k"
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
 app = Flask(__name__)
 
-# 📅 Настройка временных точек
-xenos_start = datetime(1990, 12, 1, 0, 0)
-real_start = datetime(2025, 12, 1, 0, 0, tzinfo=pytz.timezone("Europe/Moscow"))
-xenos_ratio = 90 * 24 * 60 / (24 * 60)  # 90 дней Xenos = 1 день реального времени
+# 📅 Настройка временных точек (ориентир строго по МСК)
+tz = pytz.timezone("Europe/Moscow")
+xenos_start = datetime(1960, 2, 3, 0, 0, tzinfo=tz)   # старт RP
+real_start = datetime(2026, 2, 3, 0, 0, tzinfo=tz)    # старт IRL
+xenos_ratio = 30  # 1 день IRL = 30 дней RP (1 месяц)
 
 # 🔧 Вычисление текущей Xenos-даты
 def get_xenos_now():
-    now_real = datetime.now(pytz.timezone("Europe/Moscow"))
+    now_real = datetime.now(tz)
     delta_real = now_real - real_start
     delta_minutes = delta_real.total_seconds() / 60
     xenos_minutes = delta_minutes * xenos_ratio
@@ -38,8 +39,10 @@ def handle_start(message):
 @bot.message_handler(commands=['xenos_now'])
 def handle_now(message):
     xenos_time = get_xenos_now()
-    bot.reply_to(message, f"📅 Сейчас в мире Xenos RP: {xenos_time.strftime('%d.%m.%Y %H:%M')}")
-
+    bot.reply_to(
+        message,
+        f"📅 Сейчас в мире Xenos RP: {xenos_time.strftime('%H:%M %d.%m.%Y')} (МСК)"
+        
 # ⏳ /revers
 @bot.message_handler(commands=['revers'])
 def handle_revers(message):
@@ -49,6 +52,7 @@ def handle_revers(message):
         return
     try:
         xenos_target = datetime.strptime(parts[1], "%d.%m.%Y")
+        xenos_target = tz.localize(xenos_target)
         delta_xenos = xenos_target - xenos_start
         delta_minutes = delta_xenos.total_seconds() / 60
         real_minutes = delta_minutes / xenos_ratio
@@ -67,12 +71,12 @@ def handle_convert(message):
         return
     try:
         real_target = datetime.strptime(parts[1], "%d.%m.%Y")
-        real_target = pytz.timezone("Europe/Moscow").localize(real_target)
+        real_target = tz.localize(real_target)
         delta_real = real_target - real_start
         delta_minutes = delta_real.total_seconds() / 60
         xenos_minutes = delta_minutes * xenos_ratio
         xenos_time = xenos_start + timedelta(minutes=xenos_minutes)
-        bot.reply_to(message, f"📆 Эта дата в реальности соответствует: {xenos_time.strftime('%d.%m.%Y %H:%M')} в Xenos RP")
+        bot.reply_to(message, f"📆 Эта дата в реальности соответствует: {xenos_time.strftime('%d.%m.%Y %H:%M')} в Xenos RP (МСК)")
     except Exception as e:
         print("Ошибка в /convert:", e)
         bot.reply_to(message, "❌ Неверный формат. Используй: /convert ДД.ММ.ГГГГ")
