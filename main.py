@@ -42,7 +42,8 @@ def handle_now(message):
     bot.reply_to(
         message,
         f"📅 Сейчас в мире Xenos RP: {xenos_time.strftime('%H:%M %d.%m.%Y')} (МСК)"
-        
+    )
+
 # ⏳ /revers
 @bot.message_handler(commands=['revers'])
 def handle_revers(message):
@@ -99,4 +100,8 @@ def webhook():
 # 🌐 GET-запрос от браузера
 @app.route("/", methods=["GET"])
 def index():
-    return "Xenos RP bot is alive!", 200
+    return "Xenos RP bot is alive!"
+
+# 🚀 Запуск Flask-приложения
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
