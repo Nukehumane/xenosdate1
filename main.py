@@ -1,34 +1,39 @@
-from flask import Flask, request
 import telebot
 from datetime import datetime, timedelta
 import pytz
 import os
-import time
 
-# 🔐 Токен Telegram-бота
-TOKEN = os.getenv("TOKEN") or "8373973529:AAGAZpY1ApgypN0ZIL9Cphk7AMO9gkvCX0k"
-bot = telebot.TeleBot(TOKEN, parse_mode=None)
-app = Flask(__name__)
+# 🔐 Твой токен (оставлен без изменений)
+TOKEN = "8373973529:AAGAZpY1ApgypN0ZIL9Cphk7AMO9gkvCX0k"
+bot = telebot.TeleBot(TOKEN)
 
-# 📅 Настройка временных точек (ориентир строго по МСК)
+# 📅 Настройка временных точек
 tz = pytz.timezone("Europe/Moscow")
-xenos_start = datetime(1960, 2, 3, 0, 0, tzinfo=tz)   # старт RP
-real_start = datetime(2026, 2, 3, 0, 0, tzinfo=tz)    # старт IRL
+
+# Старт RP (1960 год)
+xenos_start = datetime(1960, 2, 3, 0, 0)
+xenos_start = tz.localize(xenos_start)
+
+# Старт IRL (Твоя точка отсчета — теперь она не в будущем)
+real_start = datetime(2026, 2, 3, 0, 0) 
+real_start = tz.localize(real_start)
+
 xenos_ratio = 30  # 1 день IRL = 30 дней RP (1 месяц)
 
 # 🔧 Вычисление текущей Xenos-даты
 def get_xenos_now():
     now_real = datetime.now(tz)
     delta_real = now_real - real_start
-    delta_minutes = delta_real.total_seconds() / 60
-    xenos_minutes = delta_minutes * xenos_ratio
-    return xenos_start + timedelta(minutes=xenos_minutes)
+    # Считаем разницу в секундах и умножаем на 30
+    xenos_seconds = delta_real.total_seconds() * xenos_ratio
+    return xenos_start + timedelta(seconds=xenos_seconds)
 
 # 🟢 /start
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     bot.reply_to(message, (
-        "👋 Привет! Я бот для расчёта дат в мире Xenos RP.\n\n"
+        "👋 Привет! Я бот для расчёта дат в мире Xenos RP.\n"
+        "Бот работает локально на сервере.\n\n"
         "Доступные команды:\n"
         "/xenos_now — текущая дата в Xenos RP\n"
         "/revers ДД.ММ.ГГГГ — когда наступит Xenos-дата в реальности\n"
@@ -52,16 +57,17 @@ def handle_revers(message):
         bot.reply_to(message, "⚠️ Используй: /revers ДД.ММ.ГГГГ")
         return
     try:
+        # Улучшенная обработка даты
         xenos_target = datetime.strptime(parts[1], "%d.%m.%Y")
         xenos_target = tz.localize(xenos_target)
+        
         delta_xenos = xenos_target - xenos_start
-        delta_minutes = delta_xenos.total_seconds() / 60
-        real_minutes = delta_minutes / xenos_ratio
-        real_time = real_start + timedelta(minutes=real_minutes)
-        bot.reply_to(message, f"🕒 Эта дата в Xenos RP наступит в реальном мире: {real_time.strftime('%d.%m.%Y %H:%M')} (МСК)")
+        real_seconds = delta_xenos.total_seconds() / xenos_ratio
+        real_time = real_start + timedelta(seconds=real_seconds)
+        
+        bot.reply_to(message, f"🕒 Эта дата в RP наступит в реальности: {real_time.strftime('%d.%m.%Y %H:%M')} (МСК)")
     except Exception as e:
-        print("Ошибка в /revers:", e)
-        bot.reply_to(message, "❌ Неверный формат. Используй: /revers ДД.ММ.ГГГГ")
+        bot.reply_to(message, "❌ Ошибка! Формат: ДД.ММ.ГГГГ (например: 01.05.1965)")
 
 # 🔄 /convert
 @bot.message_handler(commands=['convert'])
@@ -73,35 +79,18 @@ def handle_convert(message):
     try:
         real_target = datetime.strptime(parts[1], "%d.%m.%Y")
         real_target = tz.localize(real_target)
+        
         delta_real = real_target - real_start
-        delta_minutes = delta_real.total_seconds() / 60
-        xenos_minutes = delta_minutes * xenos_ratio
-        xenos_time = xenos_start + timedelta(minutes=xenos_minutes)
-        bot.reply_to(message, f"📆 Эта дата в реальности соответствует: {xenos_time.strftime('%d.%m.%Y %H:%M')} в Xenos RP (МСК)")
+        xenos_seconds = delta_real.total_seconds() * xenos_ratio
+        xenos_time = xenos_start + timedelta(seconds=xenos_seconds)
+        
+        bot.reply_to(message, f"📆 В реальности {parts[1]} будет соответствовать: {xenos_time.strftime('%d.%m.%Y %H:%M')} в RP")
     except Exception as e:
-        print("Ошибка в /convert:", e)
-        bot.reply_to(message, "❌ Неверный формат. Используй: /convert ДД.ММ.ГГГГ")
+        bot.reply_to(message, "❌ Ошибка! Формат: ДД.ММ.ГГГГ")
 
-# 📡 POST-запрос от Telegram
-@app.route("/", methods=["POST"])
-def webhook():
-    try:
-        start = time.time()
-        raw = request.stream.read().decode("utf-8")
-        print("RAW update:", raw)
-        update = telebot.types.Update.de_json(raw)
-        print("Parsed update:", update)
-        bot.process_new_updates([update])
-        print("Processed in", round(time.time() - start, 2), "seconds")
-    except Exception as e:
-        print("Webhook error:", e)
-    return "OK", 200
-
-# 🌐 GET-запрос от браузера
-@app.route("/", methods=["GET"])
-def index():
-    return "Xenos RP bot is alive!"
-
-# 🚀 Запуск Flask-приложения
+# 🚀 Запуск (БЕЗ FLASK)
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+    print(">>> Бот Xenos RP запущен на ПК!")
+    print(">>> Нажмите Ctrl+C для остановки.")
+    bot.infinity_polling()
+    
